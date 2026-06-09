@@ -1,16 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  Plus,
-  Trash2,
-  X,
-  CreditCard,
-  Printer,
-  Store,
-  Table,
-  Tag,
-  DollarSign,
-  ShoppingCart,
-} from "lucide-react";
+import { Plus, X, Store, Table, Tag } from "lucide-react";
 
 const Sales = () => {
   const [halls, setHalls] = useState([]);
@@ -158,9 +147,7 @@ const Sales = () => {
     }
   };
 
-  // Generate invoice
-  // Generate invoice
-  // Generate invoice
+  // Handle invoice generation (just alert for now)
   const generateInvoice = async () => {
     const finalPrice =
       selectedCategory?.price_type === "editable"
@@ -198,407 +185,20 @@ const Sales = () => {
     };
 
     try {
-      // Save order to database
       const result = await window.electronAPI.createOrder(orderData);
       if (result.success) {
-        // Prepare invoice data for printer
-        const invoiceData = {
-          invoiceNumber: invoiceNumber.toString(),
-          date: currentDate.toISOString(),
-          tableName: selectedTable.name,
-          cashier: "Admin",
-          items: orderData.items,
-          subtotal: subtotal,
-          tax: tax,
-          discount: discount,
-          netTotal: netTotal,
-          paymentMethod: "Cash",
-        };
-
-        // Try to print using thermal printer
-        let printSuccess = false;
-
-        // Method 1: Try ESC/POS USB printer
-        try {
-          const printResult =
-            await window.electronAPI.printThermalInvoice(invoiceData);
-          if (printResult.success) {
-            printSuccess = true;
-            alert("Invoice printed successfully!");
-          }
-        } catch (err) {
-          console.log("ESC/POS printing failed:", err);
-        }
-
-        // Method 2: Try Windows printer
-        if (!printSuccess) {
-          try {
-            const printResult =
-              await window.electronAPI.printWindowsPrinter(invoiceData);
-            if (printResult.success) {
-              printSuccess = true;
-              alert("Invoice sent to Windows printer!");
-            }
-          } catch (err) {
-            console.log("Windows printing failed:", err);
-          }
-        }
-
-        // Method 3: Fallback to browser print
-        if (!printSuccess) {
-          printToThermalPrinter(orderData, selectedTable, currentDate);
-          alert("Invoice generated! Please use browser print dialog.");
-        }
-
+        alert(
+          `Invoice #${invoiceNumber} generated successfully!\nTable: ${selectedTable.name}\nProduct: ${selectedProduct.name}\nTotal: Rs. ${netTotal}`,
+        );
         setShowModal(false);
         setSelectedTable(null);
         setSelectedProduct(null);
-
-        // Reload shifts to update sales
-        if (window.electronAPI.getCurrentShift) {
-          await window.electronAPI.getCurrentShift();
-        }
       } else {
         alert("Failed to generate invoice: " + result.error);
       }
     } catch (err) {
       console.error("Error generating invoice:", err);
       alert("Error generating invoice: " + err.message);
-    }
-  };
-
-  // Print invoice for 78mm thermal printer
-  // Print invoice directly to thermal printer
-  const printToThermalPrinter = async (order, table, date) => {
-    // Get current shift info
-    const currentShift = await window.electronAPI.getCurrentShift();
-    const shiftInfo = currentShift.success ? currentShift.data : null;
-
-    // Calculate totals
-    const subtotal = order.items.reduce(
-      (sum, item) => sum + item.totalPrice,
-      0,
-    );
-    const tax = 0;
-    const discount = 0;
-    const netTotal = subtotal + tax - discount;
-
-    // Create print content optimized for 78mm thermal printer
-    const printContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Invoice ${order.invoiceNumber}</title>
-      <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        @media print {
-          body {
-            margin: 0;
-            padding: 0;
-          }
-          .no-print {
-            display: none;
-          }
-        }
-        body {
-          width: 78mm;
-          margin: 0 auto;
-          padding: 2mm;
-          font-family: 'Courier New', 'Monaco', monospace;
-          font-size: 10px;
-          line-height: 1.2;
-          background: white;
-        }
-        .header {
-          text-align: center;
-          margin-bottom: 5px;
-        }
-        .shop-name {
-          font-size: 14px;
-          font-weight: bold;
-          margin: 0;
-        }
-        .shop-address {
-          font-size: 8px;
-          margin: 1px 0;
-        }
-        .divider {
-          border-top: 1px dashed #000;
-          margin: 4px 0;
-        }
-        .divider-solid {
-          border-top: 1px solid #000;
-          margin: 4px 0;
-        }
-        .info-row {
-          display: flex;
-          justify-content: space-between;
-          margin: 2px 0;
-        }
-        .info-label {
-          font-weight: bold;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 5px 0;
-        }
-        th, td {
-          text-align: left;
-          padding: 2px 0;
-          font-size: 9px;
-        }
-        th {
-          border-bottom: 1px dashed #000;
-        }
-        .text-right {
-          text-align: right;
-        }
-        .text-center {
-          text-align: center;
-        }
-        .total-section {
-          margin-top: 5px;
-        }
-        .footer {
-          text-align: center;
-          margin-top: 8px;
-        }
-        .thankyou {
-          text-align: center;
-          margin: 5px 0;
-          font-weight: bold;
-        }
-        .developer {
-          text-align: center;
-          font-size: 7px;
-          margin-top: 5px;
-          border-top: 1px dashed #000;
-          padding-top: 5px;
-        }
-        .barcode {
-          text-align: center;
-          font-family: 'Courier New', monospace;
-          letter-spacing: 2px;
-          margin: 5px 0;
-        }
-        @page {
-          size: 78mm auto;
-          margin: 0mm;
-        }
-      </style>
-    </head>
-    <body onload="window.print(); setTimeout(function(){ window.close(); }, 1000);">
-      <!-- Header -->
-      <div class="header">
-        <div class="shop-name">PIZZA PARADISE</div>
-        <div class="shop-address">Shan Sikander Road Poso Pump Near Gaddai</div>
-        <div class="shop-address">Chungli Dera Ghazi Khan</div>
-        <div class="shop-address">Tel: 0336-8576866 - 0336-7016666</div>
-      </div>
-      
-      <div class="divider"></div>
-      
-      <!-- Invoice Info -->
-      <div class="info-row">
-        <span class="info-label">Invoice:</span>
-        <span>${order.invoiceNumber}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Date:</span>
-        <span>${date.toLocaleString()}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Table:</span>
-        <span>${table.name} (${selectedHall?.name || "Main Hall"})</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Cashier:</span>
-        <span>Admin</span>
-      </div>
-      
-      <div class="divider"></div>
-      
-      <!-- Items Table -->
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Item</th>
-            <th class="text-right">Qty</th>
-            <th class="text-right">Price</th>
-            <th class="text-right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${order.items
-            .map(
-              (item, index) => `
-            <tr>
-              <td style="vertical-align: top;">${index + 1}</td>
-              <td style="vertical-align: top;">
-                ${item.productName}
-                ${item.productSize ? `<br/><small>(${item.productSize})</small>` : ""}
-              </td>
-              <td class="text-right" style="vertical-align: top;">${item.quantity}</td>
-              <td class="text-right" style="vertical-align: top;">${item.unitPrice.toFixed(2)}</td>
-              <td class="text-right" style="vertical-align: top;">${item.totalPrice.toFixed(2)}</td>
-            </tr>
-          `,
-            )
-            .join("")}
-        </tbody>
-        <tfoot>
-          <tr class="divider">
-            <td colspan="5" style="padding: 0;"><div class="divider"></div></td>
-          </tr>
-          <tr>
-            <td colspan="3"></td>
-            <td class="text-right"><strong>Sub Total:</strong></td>
-            <td class="text-right">${subtotal.toFixed(2)}</td>
-          </tr>
-          <tr>
-            <td colspan="3"></td>
-            <td class="text-right">Tax (0%):</td>
-            <td class="text-right">${tax.toFixed(2)}</td>
-           </tr>
-          <tr>
-            <td colspan="3"></td>
-            <td class="text-right">Discount:</td>
-            <td class="text-right">${discount.toFixed(2)}</td>
-           </tr>
-          <tr>
-            <td colspan="5"><div class="divider-solid"></div></td>
-           </tr>
-          <tr>
-            <td colspan="3"></td>
-            <td class="text-right"><strong>NET TOTAL:</strong></td>
-            <td class="text-right"><strong>${netTotal.toFixed(2)}</strong></td>
-           </tr>
-        </tfoot>
-      </table>
-      
-      <div class="divider"></div>
-      
-      <!-- Payment Info -->
-      <div class="info-row">
-        <span class="info-label">Payment Method:</span>
-        <span>${order.paymentMethod || "Cash"}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Amount Paid:</span>
-        <span>Rs. ${netTotal.toFixed(2)}</span>
-      </div>
-      
-      <div class="divider"></div>
-      
-      <!-- Thank You Message -->
-      <div class="thankyou">
-        Thank You for Shopping!
-      </div>
-      
-      <div class="divider"></div>
-      
-      <!-- Developer Info -->
-      <div class="developer">
-        Software Developed by The Ghazian<br/>
-        Sibghatullah | +923348691010
-      </div>
-      
-      <!-- Feed space for thermal printer -->
-      <div style="height: 20mm;"></div>
-    </body>
-    </html>
-  `;
-
-    // Method 1: Try to use Electron's native printing
-    if (window.electronAPI && window.electronAPI.printInvoice) {
-      try {
-        await window.electronAPI.printInvoice(printContent);
-        return;
-      } catch (err) {
-        console.error("Electron print failed:", err);
-      }
-    }
-
-    // Method 2: Open print window (may be blocked by popup blocker)
-    const printWindow = window.open(
-      "",
-      "_blank",
-      "width=400,height=600,toolbar=no,menubar=no,scrollbars=yes",
-    );
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.focus();
-    } else {
-      // Method 3: If popup blocked, create an iframe
-      const iframe = document.createElement("iframe");
-      iframe.style.position = "absolute";
-      iframe.style.width = "0";
-      iframe.style.height = "0";
-      iframe.style.border = "none";
-      document.body.appendChild(iframe);
-
-      const iframeDoc = iframe.contentWindow.document;
-      iframeDoc.open();
-      iframeDoc.write(printContent);
-      iframeDoc.close();
-
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
-
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 2000);
-    }
-  };
-
-  const testPrinter = async () => {
-    const testData = {
-      invoiceNumber: "TEST001",
-      date: new Date().toISOString(),
-      tableName: "Test Table",
-      cashier: "Admin",
-      items: [
-        {
-          productName: "Test Product",
-          productSize: "Regular",
-          quantity: 1,
-          unitPrice: 100,
-          totalPrice: 100,
-        },
-      ],
-      subtotal: 100,
-      tax: 0,
-      discount: 0,
-      netTotal: 100,
-      paymentMethod: "Cash",
-    };
-
-    try {
-      // Try ESC/POS printing
-      const result = await window.electronAPI.printThermalInvoice(testData);
-      if (result.success) {
-        alert("Test print sent to thermal printer!");
-      } else {
-        alert("Thermal printer not found. Please check USB connection.");
-      }
-    } catch (err) {
-      // Try Windows printing as fallback
-      try {
-        const result = await window.electronAPI.printWindowsPrinter(testData);
-        if (result.success) {
-          alert("Test print sent to Windows printer!");
-        }
-      } catch (err2) {
-        alert("No printer found. Please install printer drivers.");
-      }
     }
   };
 
@@ -616,24 +216,11 @@ const Sales = () => {
             <span>Create Hall</span>
           </button>
           <button
-            onClick={testPrinter}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm ml-2"
-          >
-            Test Printer
-          </button>
-
-          <button
             onClick={() => setShowTableModal(true)}
             className="flex items-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
           >
             <Plus size={16} />
             <span>Create Table</span>
-          </button>
-          <button
-            onClick={testPrinter}
-            className="bg-blue-600 px-3 py-1 rounded text-sm"
-          >
-            Test Printer
           </button>
         </div>
 
@@ -828,10 +415,9 @@ const Sales = () => {
               </button>
               <button
                 onClick={generateInvoice}
-                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg flex items-center space-x-2"
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg"
               >
-                <Printer size={18} />
-                <span>Generate Invoice</span>
+                Generate Invoice
               </button>
             </div>
           </div>

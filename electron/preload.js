@@ -64,11 +64,4 @@ contextBridge.exposeInMainWorld("electronAPI", {
   createOrder: (orderData) => ipcRenderer.invoke("create-order", orderData),
   getOrdersByShift: (shiftId) =>
     ipcRenderer.invoke("get-orders-by-shift", shiftId),
-  printInvoice: (htmlContent) =>
-    ipcRenderer.invoke("print-invoice", htmlContent),
-  getPrinters: () => ipcRenderer.invoke("get-printers"),
-  printThermalInvoice: (invoiceData) =>
-    ipcRenderer.invoke("print-thermal-invoice", invoiceData),
-  printWindowsPrinter: (invoiceData) =>
-    ipcRenderer.invoke("print-windows-printer", invoiceData),
 });

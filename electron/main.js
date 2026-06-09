@@ -1,8 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const sqlite3 = require("sqlite3").verbose();
-const ThermalPrinter = require("node-thermal-printer");
-const PrinterTypes = require("node-thermal-printer").types;
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -490,17 +488,18 @@ async function initializeDatabase() {
 
           // Shifts table
           db.run(`CREATE TABLE IF NOT EXISTS shifts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  shift_date DATETIME NOT NULL,
-  opening_balance DECIMAL(10,2) DEFAULT 0,
-  closing_balance DECIMAL(10,2) DEFAULT 0,
-  close_time DATETIME,
-  remarks TEXT DEFAULT 'Ubaid',
-  status TEXT DEFAULT 'active',
-  total_sales DECIMAL(10,2) DEFAULT 0,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            shift_date DATETIME NOT NULL,
+            opening_balance DECIMAL(10,2) DEFAULT 0,
+            closing_balance DECIMAL(10,2) DEFAULT 0,
+            close_time DATETIME,
+            remarks TEXT DEFAULT 'Ubaid',
+            status TEXT DEFAULT 'active',
+            total_sales DECIMAL(10,2) DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )`);
+
           // Insert sample shifts (for testing)
           db.get("SELECT COUNT(*) as count FROM shifts", (err, row) => {
             if (!err && row.count === 0) {
@@ -546,65 +545,66 @@ async function initializeDatabase() {
               sampleShifts.forEach((shift) => {
                 db.run(
                   `INSERT INTO shifts (shift_date, opening_balance, closing_balance, close_time, remarks, status, total_sales) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                   VALUES (?, ?, ?, ?, ?, ?, ?)`,
                   shift,
                 );
               });
             }
           });
+
           // Halls table
           db.run(`CREATE TABLE IF NOT EXISTS halls (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  status TEXT DEFAULT 'active',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            status TEXT DEFAULT 'active',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )`);
 
           // Tables table
           db.run(`CREATE TABLE IF NOT EXISTS tables (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  hall_id INTEGER,
-  name TEXT NOT NULL,
-  status TEXT DEFAULT 'available',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (hall_id) REFERENCES halls(id) ON DELETE CASCADE
-)`);
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            hall_id INTEGER,
+            name TEXT NOT NULL,
+            status TEXT DEFAULT 'available',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (hall_id) REFERENCES halls(id) ON DELETE CASCADE
+          )`);
 
           // Orders table
           db.run(`CREATE TABLE IF NOT EXISTS orders (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  invoice_number TEXT UNIQUE NOT NULL,
-  table_id INTEGER,
-  shift_id INTEGER,
-  total_amount DECIMAL(10,2) DEFAULT 0,
-  tax_amount DECIMAL(10,2) DEFAULT 0,
-  discount_amount DECIMAL(10,2) DEFAULT 0,
-  net_total DECIMAL(10,2) DEFAULT 0,
-  payment_method TEXT,
-  status TEXT DEFAULT 'completed',
-  created_by TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (table_id) REFERENCES tables(id),
-  FOREIGN KEY (shift_id) REFERENCES shifts(id)
-)`);
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invoice_number TEXT UNIQUE NOT NULL,
+            table_id INTEGER,
+            shift_id INTEGER,
+            total_amount DECIMAL(10,2) DEFAULT 0,
+            tax_amount DECIMAL(10,2) DEFAULT 0,
+            discount_amount DECIMAL(10,2) DEFAULT 0,
+            net_total DECIMAL(10,2) DEFAULT 0,
+            payment_method TEXT,
+            status TEXT DEFAULT 'completed',
+            created_by TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (table_id) REFERENCES tables(id),
+            FOREIGN KEY (shift_id) REFERENCES shifts(id)
+          )`);
 
           // Order items table
           db.run(`CREATE TABLE IF NOT EXISTS order_items (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  order_id INTEGER,
-  product_id INTEGER,
-  product_name TEXT,
-  product_size TEXT,
-  quantity INTEGER DEFAULT 1,
-  bonus_quantity INTEGER DEFAULT 0,
-  unit_price DECIMAL(10,2),
-  total_price DECIMAL(10,2),
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-  FOREIGN KEY (product_id) REFERENCES products(id)
-)`);
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER,
+            product_id INTEGER,
+            product_name TEXT,
+            product_size TEXT,
+            quantity INTEGER DEFAULT 1,
+            bonus_quantity INTEGER DEFAULT 0,
+            unit_price DECIMAL(10,2),
+            total_price DECIMAL(10,2),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id)
+          )`);
 
           // Insert sample halls
           db.get("SELECT COUNT(*) as count FROM halls", (err, row) => {
@@ -694,7 +694,6 @@ function createWindow() {
 
   if (isDev) {
     win.loadURL("http://localhost:5173");
-    // win.webContents.openDevTools();
   } else {
     win.loadFile(path.join(__dirname, "../dist/index.html"));
   }
@@ -810,7 +809,6 @@ ipcMain.handle("update-category", async (event, id, category) => {
 // Delete category
 ipcMain.handle("delete-category", async (event, id) => {
   try {
-    // First check if category has products
     const products = await dbAll(
       "SELECT COUNT(*) as count FROM products WHERE category_id = ?",
       [id],
@@ -821,7 +819,6 @@ ipcMain.handle("delete-category", async (event, id) => {
         error: "Cannot delete category with existing products",
       };
     }
-
     const result = await dbRun("DELETE FROM categories WHERE id=?", [id]);
     return { success: true, changes: result.changes };
   } catch (err) {
@@ -856,16 +853,13 @@ ipcMain.handle("get-all-products", async () => {
   }
 });
 
-// Create new product (with size field)
+// Create new product
 ipcMain.handle("create-product", async (event, product) => {
   try {
-    // Get category price type
     const category = await dbGet(
       "SELECT price_type FROM categories WHERE id = ?",
       [product.categoryId],
     );
-
-    // Validate price based on category price type
     if (category && category.price_type === "fixed") {
       if (!product.price || product.price <= 0) {
         return {
@@ -874,7 +868,6 @@ ipcMain.handle("create-product", async (event, product) => {
         };
       }
     }
-
     const result = await dbRun(
       `INSERT INTO products (category_id, name, description, size, price, status) VALUES (?, ?, ?, ?, ?, ?)`,
       [
@@ -892,16 +885,13 @@ ipcMain.handle("create-product", async (event, product) => {
   }
 });
 
-// Update product (with size field)
+// Update product
 ipcMain.handle("update-product", async (event, id, product) => {
   try {
-    // Get category price type
     const category = await dbGet(
       "SELECT c.price_type FROM categories c JOIN products p ON p.category_id = c.id WHERE p.id = ?",
       [id],
     );
-
-    // Validate price based on category price type
     if (category && category.price_type === "fixed") {
       if (!product.price || product.price <= 0) {
         return {
@@ -910,7 +900,6 @@ ipcMain.handle("update-product", async (event, id, product) => {
         };
       }
     }
-
     const result = await dbRun(
       `UPDATE products SET name=?, description=?, size=?, price=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
       [
@@ -975,7 +964,6 @@ ipcMain.handle("get-employee", async (event, id) => {
 // Create new employee
 ipcMain.handle("create-employee", async (event, employee) => {
   try {
-    // Check if email already exists
     const existing = await dbGet("SELECT id FROM employees WHERE email = ?", [
       employee.email,
     ]);
@@ -985,7 +973,6 @@ ipcMain.handle("create-employee", async (event, employee) => {
         error: "Employee with this email already exists",
       };
     }
-
     const result = await dbRun(
       `INSERT INTO employees (name, phone, email, address, status) VALUES (?, ?, ?, ?, ?)`,
       [
@@ -1005,7 +992,6 @@ ipcMain.handle("create-employee", async (event, employee) => {
 // Update employee
 ipcMain.handle("update-employee", async (event, id, employee) => {
   try {
-    // Check if email already exists for another employee
     const existing = await dbGet(
       "SELECT id FROM employees WHERE email = ? AND id != ?",
       [employee.email, id],
@@ -1016,7 +1002,6 @@ ipcMain.handle("update-employee", async (event, id, employee) => {
         error: "Employee with this email already exists",
       };
     }
-
     const result = await dbRun(
       `UPDATE employees SET name=?, phone=?, email=?, address=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
       [
@@ -1074,7 +1059,6 @@ ipcMain.handle("create-expense", async (event, expense) => {
     if (expense.amount <= 0) {
       return { success: false, error: "Amount must be greater than 0" };
     }
-
     const result = await dbRun(
       `INSERT INTO expenses (title, category, amount, description, expense_date, payment_method, receipt_number, status, created_by) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -1102,7 +1086,6 @@ ipcMain.handle("update-expense", async (event, id, expense) => {
     if (expense.amount <= 0) {
       return { success: false, error: "Amount must be greater than 0" };
     }
-
     const result = await dbRun(
       `UPDATE expenses SET title=?, category=?, amount=?, description=?, expense_date=?, payment_method=?, receipt_number=?, status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`,
       [
@@ -1143,7 +1126,6 @@ ipcMain.handle("get-expense-stats", async (event, period = "month") => {
     } else if (period === "year") {
       dateFilter = "AND strftime('%Y', expense_date) = strftime('%Y', 'now')";
     }
-
     const totalResult = await dbGet(
       `SELECT SUM(amount) as total FROM expenses WHERE status = 'active' ${dateFilter}`,
     );
@@ -1155,7 +1137,6 @@ ipcMain.handle("get-expense-stats", async (event, period = "month") => {
     const recentExpenses = await dbAll(
       `SELECT * FROM expenses WHERE status = 'active' ORDER BY expense_date DESC LIMIT 5`,
     );
-
     return {
       success: true,
       data: {
@@ -1197,7 +1178,6 @@ ipcMain.handle("get-all-shifts", async () => {
 // Start new shift
 ipcMain.handle("start-shift", async (event, shiftData) => {
   try {
-    // Check if there's already an active shift
     const activeShift = await dbGet(
       "SELECT id FROM shifts WHERE status = 'active'",
     );
@@ -1207,7 +1187,6 @@ ipcMain.handle("start-shift", async (event, shiftData) => {
         error: "There is already an active shift. Please close it first.",
       };
     }
-
     const result = await dbRun(
       `INSERT INTO shifts (shift_date, opening_balance, closing_balance, remarks, status, total_sales) 
        VALUES (datetime('now'), ?, ?, ?, ?, ?)`,
@@ -1232,30 +1211,20 @@ ipcMain.handle("start-shift", async (event, shiftData) => {
 // Close shift
 ipcMain.handle("close-shift", async (event, shiftId, closingData) => {
   try {
-    // Calculate total sales from orders within this shift period
-    // For now, we'll use the total_sales from the shift record
     const result = await dbRun(
-      `UPDATE shifts SET 
-        closing_balance = ?, 
-        close_time = datetime('now'), 
-        status = 'closed',
-        updated_at = CURRENT_TIMESTAMP,
-        remarks = ?
-       WHERE id = ? AND status = 'active'`,
+      `UPDATE shifts SET closing_balance = ?, close_time = datetime('now'), status = 'closed', updated_at = CURRENT_TIMESTAMP, remarks = ? WHERE id = ? AND status = 'active'`,
       [closingData.closingBalance, closingData.remarks || "Ubaid", shiftId],
     );
-
     if (result.changes === 0) {
       return { success: false, error: "No active shift found to close" };
     }
-
     return { success: true, message: "Shift closed successfully" };
   } catch (err) {
     return { success: false, error: err.message };
   }
 });
 
-// Update shift sales (called when an order is created)
+// Update shift sales
 ipcMain.handle("update-shift-sales", async (event, amount) => {
   try {
     const activeShift = await dbGet(
@@ -1274,7 +1243,7 @@ ipcMain.handle("update-shift-sales", async (event, amount) => {
   }
 });
 
-// Delete shift (for admin purposes)
+// Delete shift
 ipcMain.handle("delete-shift", async (event, id) => {
   try {
     const result = await dbRun(
@@ -1368,11 +1337,9 @@ ipcMain.handle("delete-table", async (event, id) => {
 // Create order
 ipcMain.handle("create-order", async (event, orderData) => {
   try {
-    // Get current shift
     const currentShift = await dbGet(
       "SELECT id FROM shifts WHERE status = 'active'",
     );
-
     const result = await dbRun(
       `INSERT INTO orders (invoice_number, table_id, shift_id, total_amount, tax_amount, discount_amount, net_total, payment_method, status, created_by) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -1389,8 +1356,6 @@ ipcMain.handle("create-order", async (event, orderData) => {
         orderData.createdBy || "Admin",
       ],
     );
-
-    // Insert order items
     for (const item of orderData.items) {
       await dbRun(
         `INSERT INTO order_items (order_id, product_id, product_name, product_size, quantity, bonus_quantity, unit_price, total_price) 
@@ -1407,8 +1372,6 @@ ipcMain.handle("create-order", async (event, orderData) => {
         ],
       );
     }
-
-    // Update shift sales
     if (currentShift) {
       const shift = await dbGet("SELECT total_sales FROM shifts WHERE id = ?", [
         currentShift.id,
@@ -1419,7 +1382,6 @@ ipcMain.handle("create-order", async (event, orderData) => {
         [newTotal, newTotal, currentShift.id],
       );
     }
-
     return {
       success: true,
       id: result.lastID,
@@ -1438,277 +1400,6 @@ ipcMain.handle("get-orders-by-shift", async (event, shiftId) => {
       [shiftId],
     );
     return { success: true, data: orders };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
-});
-
-// Add this handler for direct printing from Electron
-ipcMain.handle("print-invoice", async (event, htmlContent) => {
-  try {
-    // Create a hidden browser window for printing
-    const printWindow = new BrowserWindow({
-      show: false,
-      width: 400,
-      height: 600,
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-      },
-    });
-
-    // Load the HTML content
-    await printWindow.loadURL(
-      `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`,
-    );
-
-    // Wait for content to load
-    printWindow.webContents.on("did-finish-load", () => {
-      // Print silently to default printer
-      printWindow.webContents.print(
-        {
-          silent: false, // Set to true for silent printing without dialog
-          printBackground: true,
-          deviceName: "", // Leave empty for default printer
-        },
-        (success, errorType) => {
-          if (!success) {
-            console.error("Print failed:", errorType);
-          }
-          // Close the window after printing
-          setTimeout(() => {
-            printWindow.close();
-          }, 1000);
-        },
-      );
-    });
-
-    return { success: true };
-  } catch (err) {
-    console.error("Print error:", err);
-    return { success: false, error: err.message };
-  }
-});
-
-ipcMain.handle("get-printers", async () => {
-  try {
-    const { exec } = require("child_process");
-    const printers = [];
-
-    if (process.platform === "win32") {
-      // For Windows
-      exec("wmic printer get name", (error, stdout) => {
-        if (!error) {
-          const lines = stdout.split("\n");
-          lines.forEach((line) => {
-            if (line.trim() && !line.includes("Name")) {
-              printers.push(line.trim());
-            }
-          });
-        }
-      });
-    }
-
-    return { success: true, printers: printers };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
-});
-
-// Print invoice to thermal printer using ESC/POS
-ipcMain.handle("print-thermal-invoice", async (event, invoiceData) => {
-  try {
-    // Configure the thermal printer
-    let printer = new ThermalPrinter({
-      type: PrinterTypes.EPSON, // For Epson compatible printers
-      interface: "usb", // or 'tcp' for network, or 'serial'
-      options: {
-        timeout: 5000,
-      },
-      width: 48, // 48 characters per line (for 78mm paper)
-      characterSet: "UTF-8",
-      removeSpecialCharacters: false,
-      lineCharacter: "-",
-    });
-
-    // Try to connect to printer
-    try {
-      await printer.isPrinterConnected();
-    } catch (err) {
-      console.log("USB connection failed, trying Windows driver...");
-      // Fallback to Windows printer driver
-      printer = new ThermalPrinter({
-        type: PrinterTypes.WINDOWS,
-        interface: `EPSON TM-T20II`, // Change to your printer name
-        options: { timeout: 5000 },
-        width: 48,
-        characterSet: "UTF-8",
-        removeSpecialCharacters: false,
-        lineCharacter: "-",
-      });
-    }
-
-    // Start building the receipt
-    printer.alignCenter();
-    printer.setTextDoubleHeight();
-    printer.println("PIZZA PARADISE");
-    printer.setTextNormal();
-    printer.println("Shan Sikander Road Poso Pump");
-    printer.println("Near Gaddai Chungli Dera Ghazi Khan");
-    printer.println("Tel: 0336-8576866 - 0336-7016666");
-    printer.newLine();
-
-    printer.alignLeft();
-    printer.println("----------------------------------------");
-
-    // Invoice details
-    printer.println(`Invoice: ${invoiceData.invoiceNumber}`);
-    printer.println(`Date: ${new Date(invoiceData.date).toLocaleString()}`);
-    printer.println(`Table: ${invoiceData.tableName}`);
-    printer.println(`Cashier: ${invoiceData.cashier || "Admin"}`);
-
-    printer.println("----------------------------------------");
-
-    // Table header
-    printer.println(
-      `${"#".padEnd(3)} ${"Item".padEnd(20)} ${"Qty".padEnd(4)} ${"Price".padEnd(8)} ${"Total".padEnd(8)}`,
-    );
-    printer.println("----------------------------------------");
-
-    // Items
-    let itemNumber = 1;
-    for (const item of invoiceData.items) {
-      let itemName = item.productName;
-      if (item.productSize) {
-        itemName += ` (${item.productSize})`;
-      }
-
-      // Truncate item name if too long
-      if (itemName.length > 20) {
-        itemName = itemName.substring(0, 18) + "..";
-      }
-
-      printer.println(
-        `${String(itemNumber).padEnd(3)} ${itemName.padEnd(20)} ${String(item.quantity).padEnd(4)} ${String(item.unitPrice).padEnd(8)} ${String(item.totalPrice).padEnd(8)}`,
-      );
-      itemNumber++;
-    }
-
-    printer.println("----------------------------------------");
-
-    // Totals
-    printer.println(`Sub Total:${" ".repeat(30)} Rs. ${invoiceData.subtotal}`);
-    printer.println(`Tax (0%):${" ".repeat(32)} Rs. ${invoiceData.tax}`);
-    printer.println(`Discount:${" ".repeat(32)} Rs. ${invoiceData.discount}`);
-    printer.println("----------------------------------------");
-    printer.setTextDoubleHeight();
-    printer.println(`NET TOTAL:${" ".repeat(25)} Rs. ${invoiceData.netTotal}`);
-    printer.setTextNormal();
-
-    printer.println("----------------------------------------");
-    printer.println(`Payment: ${invoiceData.paymentMethod || "Cash"}`);
-    printer.println(`Amount Paid: Rs. ${invoiceData.netTotal}`);
-
-    printer.println("----------------------------------------");
-
-    // Thank you message
-    printer.alignCenter();
-    printer.println("Thank You for Shopping!");
-
-    printer.println("----------------------------------------");
-
-    // Developer info
-    printer.alignCenter();
-    printer.println("Software Developed by The Ghazian");
-    printer.println("Sibghatullah | +923348691010");
-
-    printer.newLine();
-    printer.newLine();
-    printer.newLine();
-
-    // Cut paper (if auto-cutter available)
-    printer.cut();
-
-    // Execute print
-    const execute = await printer.execute();
-
-    return { success: true, message: "Invoice sent to printer" };
-  } catch (err) {
-    console.error("Printer error:", err);
-    return { success: false, error: err.message };
-  }
-});
-
-// Alternative: Print using Windows printer directly
-ipcMain.handle("print-windows-printer", async (event, invoiceData) => {
-  try {
-    const { exec } = require("child_process");
-    const fs = require("fs");
-    const path = require("path");
-    const os = require("os");
-
-    // Create a simple text version of the invoice
-    let invoiceText = "";
-    invoiceText += "\x1B\x40"; // Reset printer
-    invoiceText += "\x1B\x61\x01"; // Center align
-    invoiceText += "\x1B\x45\x01"; // Bold on
-    invoiceText += "PIZZA PARADISE\n";
-    invoiceText += "\x1B\x45\x00"; // Bold off
-    invoiceText += "Shan Sikander Road Poso Pump\n";
-    invoiceText += "Near Gaddai Chungli Dera Ghazi Khan\n";
-    invoiceText += "Tel: 0336-8576866 - 0336-7016666\n";
-    invoiceText += "\n";
-    invoiceText += "----------------------------------------\n";
-    invoiceText += `Invoice: ${invoiceData.invoiceNumber}\n`;
-    invoiceText += `Date: ${new Date(invoiceData.date).toLocaleString()}\n`;
-    invoiceText += `Table: ${invoiceData.tableName}\n`;
-    invoiceText += `Cashier: ${invoiceData.cashier || "Admin"}\n`;
-    invoiceText += "----------------------------------------\n";
-    invoiceText += "#  Item                 Qty Price Total\n";
-    invoiceText += "----------------------------------------\n";
-
-    let itemNumber = 1;
-    for (const item of invoiceData.items) {
-      let itemName = item.productName;
-      if (item.productSize) {
-        itemName += ` (${item.productSize})`;
-      }
-      invoiceText += `${itemNumber}  ${itemName.padEnd(20)} ${item.quantity}   ${item.unitPrice}   ${item.totalPrice}\n`;
-      itemNumber++;
-    }
-
-    invoiceText += "----------------------------------------\n";
-    invoiceText += `Sub Total:${" ".repeat(30)} Rs. ${invoiceData.subtotal}\n`;
-    invoiceText += `Tax (0%):${" ".repeat(32)} Rs. ${invoiceData.tax}\n`;
-    invoiceText += `Discount:${" ".repeat(32)} Rs. ${invoiceData.discount}\n`;
-    invoiceText += "----------------------------------------\n";
-    invoiceText += `NET TOTAL:${" ".repeat(25)} Rs. ${invoiceData.netTotal}\n`;
-    invoiceText += "----------------------------------------\n";
-    invoiceText += `Payment: ${invoiceData.paymentMethod || "Cash"}\n`;
-    invoiceText += `Amount Paid: Rs. ${invoiceData.netTotal}\n`;
-    invoiceText += "----------------------------------------\n";
-    invoiceText += "Thank You for Shopping!\n";
-    invoiceText += "----------------------------------------\n";
-    invoiceText += "Software Developed by The Ghazian\n";
-    invoiceText += "Sibghatullah | +923348691010\n";
-    invoiceText += "\n\n\n";
-    invoiceText += "\x1D\x56\x00"; // Cut paper
-
-    // Save to temp file
-    const tempFile = path.join(os.tmpdir(), `invoice_${Date.now()}.txt`);
-    fs.writeFileSync(tempFile, invoiceText);
-
-    // Print using Windows command
-    exec(`notepad /p "${tempFile}"`, (error) => {
-      if (error) {
-        console.error("Print error:", error);
-      }
-      setTimeout(() => {
-        fs.unlinkSync(tempFile);
-      }, 5000);
-    });
-
-    return { success: true, message: "Invoice sent to printer" };
   } catch (err) {
     return { success: false, error: err.message };
   }
